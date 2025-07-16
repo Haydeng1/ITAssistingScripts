@@ -3,7 +3,7 @@ ITAssistingScripts is a collection of automation scripts aimed at simplifying an
 
 The goal is to reduce human error, speed up routine tasks, and enforce best practices in security across commonly used services.
 
-#🔐 Security Notice
+# 🔐 Security Notice
 Security is a top priority in this project. While contributors strive to follow secure coding practices, we strongly encourage all users to review any script before running it in a production environment.
 
 ## ⚠ If you encounter:
