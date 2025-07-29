@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Domain Renewal Scheduler</title>
+  <style>
+  body {
+    font-family: "Segoe UI", Roboto, sans-serif;
+    background-color: #f4f6f8;
+    margin: 0;
+    padding: 2rem;
+    color: #333;
+  }
+
+  h2 {
+    color: #1a73e8;
+    margin-bottom: 1rem;
+  }
+
+  form {
+    background-color: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    max-width: 600px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  label {
+    display: block;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.3rem;
+  }
+
+  input[type="text"],
+  input[type="date"],
+  textarea {
+    width: calc(100% - 1.5rem);
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+  }
+
+  input:focus,
+  textarea:focus {
+    border-color: #1a73e8;
+    outline: none;
+  }
+
+  textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  input[type="checkbox"] {
+    margin-right: 0.5rem;
+  }
+
+  #searchResults {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    max-height: 150px;
+    overflow-y: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .result {
+    padding: 0.6rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .result:hover {
+    background-color: #e0f0ff;
+  }
+
+  button[type="submit"] {
+    margin-top: 1.5rem;
+    padding: 0.8rem 1.5rem;
+    background-color: #1a73e8;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  button[type="submit"]:hover {
+    background-color: #1666c1;
+  }
+  .form-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #333;
+  font-size: 14px;
+}
+
+.required {
+  color: red;
+  margin-left: 2px;
+}
+
+.form-select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #333;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-select:focus {
+  border-color: #007BFF;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+}
+.containerdiv {
+  max-width: 600px;
+}
+</style>
+
+</head>
+<body>
+  <div style="flex-direction: row; flex-wrap: wrap; gap: 8em; width:90vw; display:flex;">
+    <div class="containerdiv">
+      <h2>Domain Renewal Tool</h2>
+      <form id="domainForm">
+        <label>Domain:
+          <input type="text" name="domain" required />
+        </label><br /><br />
+
+        <label>Expiry Date:
+          <input type="date" name="expiry" required />
+        </label><br /><br />
+
+        <label>Payment Type:
+          <select required required="required" class="form-select" name="schedule[frequency]" id="paymentType">
+            <option disabled selected value="" label=" "></option>
+            <option value="Annually">Automatic</option>
+            <option value="Biennially">Direct Bank Transfers</option>
+          </select>
+        </label><br /><br />
+
+        <label>Recurring Frequency:
+          <select required required="required" class="form-select" name="schedule[frequency]" id="schedule_frequency">
+            <option disabled selected value="" label=" "></option>
+            <option value="Annually">Annually</option>
+            <option value="Biennially">Biennially</option>
+          </select>
+
+        <label>Notes:
+          <textarea name="notes"></textarea>
+        </label><br /><br />
+
+        <label>In Synergy Wholesale:
+          <input type="checkbox" name="inSynergy" />
+        </label><br /><br />
+
+        <label>Customer Business Name or ID:
+          <input type="text" id="customerInput" oninput="searchCustomers()" autocomplete="off" />
+        </label>
+        <div id="searchResults" style="z-index: 2;"></div><br />
+
+        <button  type="submit">Submit</button>
+      </form>
+    </div>
+    <div class="containerdiv">
+      <h2>Does Schedule Exist</h2>
+      <form id="checkSchedule">
+        <label>Domain:
+          <input type="text" name="domain" required />
+        </label><br /><br />
+
+        <div id="searchResults2" style="z-index: 2;"></div><br />
+
+        <button  type="submit">Submit</button>
+      </form>
+    </div>
+  </div>
+  <script defer>
+    let selectedCustomerId = null;
+    let domainstart = 'http://localhost:3000';
+    
+
+    async function searchCustomers() {
+      const query = document.getElementById('customerInput').value;
+      if (!query || query.length < 4) return;
+
+      const res = await fetch(`${domainstart}/api/customers?business_name=${encodeURIComponent(query)}`);
+      const data = await res.json();
+
+      const resultsDiv = document.getElementById('searchResults');
+      resultsDiv.innerHTML = '';
+
+      (data.customers || []).forEach(cust => {
+        const div = document.createElement('div');
+        div.textContent = `${cust.business_name || cust.name} (ID: ${cust.id})`;
+        div.onclick = () => {
+          selectedCustomerId = cust.id;
+          document.getElementById('customerInput').value = `${cust.business_name || cust.name}`;
+          resultsDiv.innerHTML = '';
+        };
+        resultsDiv.appendChild(div);
+      });
+    }
+
+    document.getElementById("checkSchedule").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      console.log("test");
+
+      const form = e.target;
+      console.log(form);
+      const data = {
+        domain: form.domain.value
+      }
+      console.log(data);
+
+      const res = await fetch(`${domainstart}/api/checkschedules?domain=${encodeURIComponent(data.domain)}`,
+      {
+        method: 'GET'
+      }
+      );
+      const result = await res.json();
+      console.log(result);
+      const elementResults = document.getElementById("searchResults2");
+      elementResults.innerHTML = "";
+      for(let i = 0; i < result.length; i++){
+        const div = document.createElement('div');
+        console.log(result[i]);
+        div.innerText = result[i];
+        elementResults.appendChild(div);
+      }
+      
+    });
+
+    document.getElementById("domainForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      console.log("test");
+
+      if (!selectedCustomerId) return alert("Please select a customer first.");
+
+      const form = e.target;
+      const data = {
+        customer_id: selectedCustomerId,
+        domain: form.domain.value,
+        expiry: form.expiry.value,
+        paymentType: form.paymentType.value,
+        notes: form.notes.value,
+        inSynergy: form.inSynergy.checked,
+        schedule_frequency: form.schedule_frequency.value
+      };
+
+      const res = await fetch(`${domainstart}/api/create-schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const result = await res.json();
+      if (res.ok) {
+        alert(result.message);
+      } else {
+        alert("Error: " + (result.error || "Something went wrong"));
+      }
+    });
+  </script>
+</body>
+</html>
